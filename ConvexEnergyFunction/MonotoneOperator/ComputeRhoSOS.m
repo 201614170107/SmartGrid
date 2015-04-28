@@ -10,7 +10,7 @@ prog        =   prog.withIndeterminate([x;z]);
 TP          =   reshape(TP,nn,nn);
 pol         =   z'*(TP*rss(rs(Mx)*[1;x],nn))*z;
 [prog,Me]   =   makePolyMat(prog,[z],size(Qse,3),1,2,-1);
-[prog,Mm]   =   makePolyMat(prog,[x],1,1,2,-1);
+[prog,Mm]   =   makePolyMat(prog,[x;z],1,1,2,-1);
 [prog,Mw]   =   makePolyMat(prog,[z],size(Qsw,3),1,2,2);
 
 Qe  =   [];
@@ -26,7 +26,7 @@ end
 prog                =   prog.withSOS(pol-Me'*Qe-Mw'*Qw-Mm'*(z'*z-1)-1);
 options             =   spot_sdp_default_options();
 options.verbose     =   1;
-sol                 =   prog.minimize(0,@spot_frlib,options);
+sol                 =   prog.minimize(0,@spot_mosek,options);
 chk                 =   spotprogsol.statusIsPrimalFeasible(sol.status);
 
 
