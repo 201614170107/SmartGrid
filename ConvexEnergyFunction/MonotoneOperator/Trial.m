@@ -1,6 +1,6 @@
 clc;
 clearvars;
-mpc=loadcase('case5.m');
+mpc=loadcase('case9.m');
 
 [Matsx,Qse,Qsi,nn,TQ,ff]=MakeMats2(mpc,.45,1);
 %%xy=minFunc(ff,randn(nn,1),struct('derivativeCheck','on'));
