@@ -9,9 +9,9 @@ prog        =   prog.withIndeterminate([x;z]);
 [prog,TP]   =   prog.newFree(nn*nn);
 TP          =   reshape(TP,nn,nn);
 pol         =   z'*(TP*rss(rs(Mx)*[1;x],nn))*z;
-[prog,Me]   =   makePolyMat(prog,[x;z],size(Qse,3),1,2,-1);
-[prog,Mm]   =   makePolyMat(prog,[x;z],1,1,2,-1);
-[prog,Mw]   =   makePolyMat(prog,[x;z],size(Qsw,3),1,2,2);
+[prog,Me]   =   makePolyMat(prog,[z],size(Qse,3),1,2,-1);
+[prog,Mm]   =   makePolyMat(prog,[x],1,1,2,-1);
+[prog,Mw]   =   makePolyMat(prog,[z],size(Qsw,3),1,2,2);
 
 Qe  =   [];
 for it=1:size(Qse,3)
