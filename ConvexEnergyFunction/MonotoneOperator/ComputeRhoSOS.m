@@ -8,9 +8,13 @@ z           =   msspoly('z',nn);
 prog        =   prog.withIndeterminate([x;z]);
 [prog,TP]   =   prog.newFree(nn*nn);
 TP          =   reshape(TP,nn,nn);
-pol         =   z'*(TP*rss(rs(Mx)*[1;x],nn))*z;
+for it=2:size(Mx,3)
+    Mx(:,:,it)  =   (Mx(:,:,1)\Mx(:,:,it));
+end
+Mx(:,:,1)   =   eye(nn);
+
+pol         =   z'*(TP*rss(rs(Mx)*[1;x],nn)-eye(nn))*z;
 [prog,Me]   =   makePolyMat(prog,[z],size(Qse,3),1,2,-1);
-[prog,Mm]   =   makePolyMat(prog,[x;z],1,1,2,-1);
 [prog,Mw]   =   makePolyMat(prog,[z],size(Qsw,3),1,2,2);
 
 Qe  =   [];
@@ -23,10 +27,10 @@ for it=1:size(Qsw,3)
     Qw=[Qw;[1;x]'*Qsw(:,:,it)*[1;x]];
 end
 
-prog                =   prog.withSOS(pol-Me'*Qe-Mw'*Qw-Mm'*(z'*z-1)-1);
+prog                =   prog.withSOS(pol-Me'*Qe-Mw'*Qw);
 options             =   spot_sdp_default_options();
 options.verbose     =   1;
-sol                 =   prog.minimize(0,@spot_mosek,options);
+sol                 =   prog.minimize(0,@spot_frlib,options);
 chk                 =   spotprogsol.statusIsPrimalFeasible(sol.status);
 
 
@@ -35,13 +39,13 @@ end
 function [pr,laml]=makePolyMat(pr,vars,n,m,d,SOSp)
 
 if(SOSp==2)
-    [pr,laml]   =   pr.newSOSPoly(monomials(vars,0:d),n*m);
+    [pr,laml]   =   pr.newSOSPoly(monomials(vars,2),n*m);
 elseif(SOSp==1)
-    [pr,laml]   =   pr.newSDSOSPoly(monomials(vars,0:d),n*m);
+    [pr,laml]   =   pr.newSDSOSPoly(monomials(vars,2),n*m);
 elseif(SOSp==0)
-    [pr,laml]   =   pr.newDSOSPoly(monomials(vars,0:d),n*m);
+    [pr,laml]   =   pr.newDSOSPoly(monomials(vars,2),n*m);
 else
-    [pr,laml]   =   pr.newFreePoly(monomials(vars,0:d),n*m);
+    [pr,laml]   =   pr.newFreePoly(monomials(vars,2),n*m);
 end
 laml        =   reshape(laml,[n,m]);
 
