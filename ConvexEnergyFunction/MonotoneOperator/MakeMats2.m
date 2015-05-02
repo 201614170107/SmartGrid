@@ -8,9 +8,13 @@ pq      =   setdiff(nsb,pv);
 G       =   real(Y);
 B       =   imag(Y);
 nbr     =   size(mpc.branch,1);
+Ai      =   [];
+Aj      =   [];
 if(flim>0)
     Amat    =   sparse(1:nbr,mpc.branch(:,1),1,nbr,n)...
         -sparse(1:nbr,mpc.branch(:,2),1,nbr,n);
+    Ai      =   mpc.branch(:,1);
+    Aj      =   mpc.branch(:,2);
 else
     Amat    =   [];
     nbr     =   0;
@@ -28,6 +32,8 @@ Vpv     =   mpc.bus(pv,8);
 
 [~,Jac,Mats]    =   GetQuads(@funf,nn);
 [Qse,Qsi]       =   MakeQs();
+Qse(abs(Qse)<1e-10)  =   0;
+Qsi(abs(Qsi)<1e-10)  =   0;
 
 
     %   Power Flow Operator %
@@ -55,7 +61,8 @@ Vpv     =   mpc.bus(pv,8);
         Vc      =   Vx+1i*Vy;
         f       =   [abs(Vc(pv)).^2-Vpv.^2;abs(Vc(pq)).^2-Vmin(pq).^2;...
             Vmax(pq).^2-abs(Vc(pq)).^2];
-        if(~isempty(Amat))
+        if(~isempty(Amat))            
+           % f=[f;real(Vc(Ai).*conj(Vc(Aj)))-flim*abs(Vc(Ai)).^2;real(Vc(Ai).*conj(Vc(Aj)))-flim*abs(Vc(Aj)).^2];
             f=[f;-abs(Amat*Vc).^2+flim^2];
         end
     end
