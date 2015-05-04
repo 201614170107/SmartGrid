@@ -7,7 +7,7 @@ prog        =   spotsosprog;
 x           =   msspoly('x',nn);
 z           =   msspoly('z',nn);
 prog        =   prog.withIndeterminate([x;z]);
-Feron       =   2;
+Feron       =   1;
 
 if(Feron==2)
     [prog,TP]   =   prog.newFree(nn*nn*size(Mx,3));
@@ -24,6 +24,7 @@ else
 end
 [prog,Me]   =   makePolyMat(prog,[z],size(Qse,3),1,2,-1);
 [prog,Mw]   =   makePolyMat(prog,[z],size(Qsw,3),1,2,2);
+
 Qe  =   [];
 for it=1:size(Qse,3)
     Qe=[Qe;[1;x]'*Qse(:,:,it)*[1;x]];
@@ -46,13 +47,13 @@ end
 function [pr,laml]=makePolyMat(pr,vars,n,m,d,SOSp)
 
 if(SOSp==2)
-    [pr,laml]   =   pr.newSOSPoly(monomials(vars,2),n*m);
+    [pr,laml]   =   pr.newSOSPoly(monomials(vars,d),n*m);
 elseif(SOSp==1)
-    [pr,laml]   =   pr.newSDSOSPoly(monomials(vars,2),n*m);
+    [pr,laml]   =   pr.newSDSOSPoly(monomials(vars,d),n*m);
 elseif(SOSp==0)
-    [pr,laml]   =   pr.newDSOSPoly(monomials(vars,2),n*m);
+    [pr,laml]   =   pr.newDSOSPoly(monomials(vars,d),n*m);
 else
-    [pr,laml]   =   pr.newFreePoly(monomials(vars,2),n*m);
+    [pr,laml]   =   pr.newFreePoly(monomials(vars,d),n*m);
 end
 laml        =   reshape(laml,[n,m]);
 
