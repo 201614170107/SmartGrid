@@ -59,7 +59,8 @@ Qsi(abs(Qsi)<1e-10)  =   0;
     function f=func(V)
         [Vx,Vy] =   formV(V);
         Vc      =   Vx+1i*Vy;
-        f       =   [abs(Vc(pv)).^2-Vpv.^2;abs(Vc(pq)).^2-Vmin(pq).^2];%Vmax(pq).^2-abs(Vc(pq)).^2];
+        f       =   [abs(Vc(pv)).^2-Vpv.^2;abs(Vc(pq)).^2-Vmin(pq).^2;...
+                        Vmax(pq).^2-abs(Vc(pq)).^2];
         if(~isempty(Amat))            
            % f=[f;real(Vc(Ai).*conj(Vc(Aj)))-flim*abs(Vc(Ai)).^2;real(Vc(Ai).*conj(Vc(Aj)))-flim*abs(Vc(Aj)).^2];
             f=[f;-abs(Amat*Vc).^2+flim^2];
