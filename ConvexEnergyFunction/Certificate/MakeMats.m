@@ -1,131 +1,120 @@
-function [Matsx,Matsw,Qssx,Qssw,fun,ff,TestQ,nn]=MakeMats(mpc,flim,sclV)
+function [Mats,Qse,Qsi,Qss,nn,TQs,ff]=MakeMats(mpc,flim,sclV,addPlims,plims,qlims)
 Y       =   makeYbus(mpc);
 sb      =   find(mpc.bus(:,2)==3);
 n       =   size(Y,1);
 nsb     =   setdiff(1:n,sb);
-G       =   real(Y);
-B       =   imag(Y);
+pv      =   find(mpc.bus(:,2)==2);
+pq      =   setdiff(nsb,pv);
 nbr     =   size(mpc.branch,1);
 if(flim>0)
-Amat    =   sparse(1:nbr,mpc.branch(:,1),1,nbr,n)...
-                -sparse(1:nbr,mpc.branch(:,2),1,nbr,n);
-else            
-Amat    =   [];
-nbr     =   0;
+    Amat    =   sparse(1:nbr,mpc.branch(:,1),1,nbr,n)...
+        -sparse(1:nbr,mpc.branch(:,2),1,nbr,n);
+else
+    Amat    =   [];
 end
 
-nn      =   4*(n-1)+nbr;
+nn      =   2*(n-1);
 Vnom    =   exp(0*1i)*mpc.bus(sb,8);
-Vmin    =   mpc.bus(nsb,13);
-Vmax    =   mpc.bus(nsb,12);
+Vmin    =   mpc.bus(:,13);
+Vmax    =   mpc.bus(:,12);
 Vavg    =   (Vmin+Vmax)/2;
 Vmin    =   Vavg+sclV*(Vmin-Vavg);
 Vmax    =   Vavg+sclV*(Vmax-Vavg);
+Vpv     =   mpc.bus(pv,8);
+
+
+Qlims   =   zeros(length(pv),2);
+for it=1:length(pv)
+    Qlims(it,1) =   mpc.gen(mpc.gen(:,1)==pv(it),5);
+    Qlims(it,2) =   mpc.gen(mpc.gen(:,1)==pv(it),4);
+end
+Qlims       =   Qlims/mpc.baseMVA;
+
+Qlimsb      =   zeros(2,1);
+Qlimsb(1)   =   mpc.gen(mpc.gen(:,1)==sb,5);
+Qlimsb(2)   =   mpc.gen(mpc.gen(:,1)==sb,4);
+
+Qlimsb      =   Qlimsb/mpc.baseMVA;
+Pmax        =   mpc.gen(mpc.gen(:,1)==sb,9)/mpc.baseMVA;
 
 
 
-            
+[~,Jac,Mats]        =   GetQuads(@funf,nn);
+Qss                 =   GetQuads(@funpf,nn);
+[Qse,Qsi]           =   MakeQs();
 
-Qss     =   MakeQs();
-Mats    =   MakeMats();
-Qssx    =   Qss(1:2*(n-1)+1,1:2*(n-1)+1,1:2*(n-1));
-Qssw    =   Qss(1:2*(n-1)+1,1:2*(n-1)+1,2*n-1:end);
-Matsx   =   Mats(1:2*(n-1),1:2*(n-1),1:2*n-1);
-Matsw   =   Mats(1:2*(n-1),1:2*(n-1),2*n:end);
 
-    function Mat=MakeMats()
-        Mat         =   zeros(nn,nn,nn+1);
-        Mat(:,:,1)  =   MakeJ(zeros(nn,1));
-        for it=1:nn
-            Mat(:,:,it+1)=MakeJ(sparse(it,1,1,nn,1))-Mat(:,:,1);
-        end
-    end
-    function res=bsol(k)
-        res=zeros(nn,1);
-        if((k>=1)&&(k<=nn))
-            res=sparse(k,1,1,nn,1);
-        end
-    end
-    function Jac=MakeJ(V)
-        Vx      =   real(Vnom)*ones(n,1);
-        Vx(nsb) =   V(1:(n-1))+Vx(nsb);
-        Vy      =   imag(Vnom)*ones(n,1);
-        Vy(nsb) =   V(n:(2*n-2))+Vy(nsb);
-        Gax     =   diag(G(nsb,:)*Vx);
-        Gbx     =   diag(Vx(nsb))*G(nsb,nsb);
-        Gay     =   diag(G(nsb,:)*Vy);
-        Gby     =   diag(Vy(nsb))*G(nsb,nsb);
-        Bax     =   diag(B(nsb,:)*Vx);
-        Bbx     =   diag(Vx(nsb))*B(nsb,nsb);
-        Bay     =   diag(B(nsb,:)*Vy);
-        Bby     =   diag(Vy(nsb))*B(nsb,nsb);
-        Jac     =   [Gax+Gbx+Bby-Bay,Gay+Gby+Bax-Bbx,zeros(n-1,2*(n-1)+nbr);...
-                        Gby-Gay-Bbx-Bax,Gax-Gbx-Bby-Bay,zeros(n-1,2*(n-1)+nbr);...
-                        2*diag(Vx(nsb)),2*diag(Vy(nsb)),-diag(V(2*n-1:3*n-3)),zeros((n-1),(n-1)+nbr);...
-                        -2*diag(Vx(nsb)),-2*diag(Vy(nsb)),zeros(n-1,n-1),-diag(V(3*n-2:4*n-4)),zeros(n-1,nbr)];
-        
-        if(~isempty(Amat))
-           Jac=[Jac;-2*diag(Amat*Vx)*Amat(:,nsb),-2*diag(Amat*Vy)*Amat(:,nsb),zeros(nbr,2*(n-1)),-diag(V(4*n-3:4*n-4+nbr));];
-        end
-    end
-
+    %   Power Flow Operator %
     function f=funf(V)
-        Vx      =   real(Vnom)*ones(n,1);
-        Vx(nsb) =   V(1:(n-1))+Vx(nsb);
-        Vy      =   imag(Vnom)*ones(n,1);
-        Vy(nsb) =   V(n:(2*n-2))+Vy(nsb);        
+        [Vx,Vy] =   formV(V);
         Vc      =   Vx+1i*Vy;
         S       =   Vc.*conj(Y*Vc);
-        f       =   [real(S(nsb));imag(S(nsb));...
-            abs(Vc(nsb)).^2-V(2*n-1:3*n-3)-(Vmin).^2;...
-             -abs(Vc(nsb)).^2-V(3*n-2:4*n-4)+(Vmax).^2];
-         if(~isempty(Amat))
-            f=[f;-abs(Amat*Vc).^2-V(4*n-3:4*n-4+nbr)+flim^2];
-         end
+        f       =   [real(S);imag(S)];
+        f(n+pv) =   abs(Vc(pv)).^2-Vpv.^2;
+        f       =   [f(nsb);f(n+nsb)];
     end
 
-    function Qs=MakeQs
-        Qs=zeros(nn+1,nn+1,nn);
-        FF=funf(zeros(nn,1));
-        for k=1:nn
-            Qs(1,1,k)   =   FF(k);
+     %   Power Flow Operator %
+    function f=funpf(V)
+        [Vx,Vy] =   formV(V);
+        Vc      =   Vx+1i*Vy;
+        S       =   Vc.*conj(Y*Vc);
+        f       =   [real(S(nsb))-plims(nsb,1);plims(nsb,2)-real(S(nsb));...
+                        imag(S(pq))-qlims(pq,1);qlims(pq,2)-imag(S(pq))];
+    end
+
+    %   Helper Function - Add Slack Bus Voltage Reference %
+    function [Vx,Vy,A]=formV(V)
+        
+        A       =   eye(2*n);
+        A       =   A(:,[nsb;n+nsb]);
+        Vx      =   A(1:n,:)*V+real(Vnom);
+        Vy      =   A(n+1:2*n,:)*V+imag(Vnom);
+    end
+
+    %   Constraints on Voltages %
+    function f=func(V)
+        [Vx,Vy] =   formV(V);
+        Vc      =   Vx+1i*Vy;
+        S       =   Vc.*conj(Y*Vc);
+        f       =   [abs(Vc(pv)).^2-Vpv.^2;abs(Vc(pq)).^2-Vmin(pq).^2;...
+                        Vmax(pq).^2-abs(Vc(pq)).^2];
+        if(~isempty(Amat))            
+            f   =   [f;-abs(Amat*Vc).^2+flim^2];
         end
-        for ii=2:(nn+1)
-            FF=funf(bsol(ii-1));
-            FFa=funf(2*bsol(ii-1));
-            for k=1:nn
-                Qs(ii,ii,k)   =   (FFa(k)-2*FF(k)+Qs(1,1,k))/2;
-                Qs(1,ii,k)    =   (FF(k)-Qs(1,1,k)-Qs(ii,ii,k))/2;
-                Qs(ii,1,k)    =   Qs(1,ii,k);
-            end
-        end
-        for ii=2:(nn+1)
-            for jj=(ii+1):(nn+1)
-                FF=funf(bsol(ii-1)+bsol(jj-1));
-                for k=1:nn
-                    Qs(ii,jj,k)   =   (FF(k)-2*(Qs(1,ii,k)+Qs(1,jj,k))-Qs(1,1,k)-Qs(ii,ii,k)-Qs(jj,jj,k))/2;
-                    Qs(jj,ii,k)   =   Qs(ii,jj,k);
-                end
-            end
+        if(addPlims)
+            f       =   [f;imag(S(pv))-Qlims(:,1);Qlims(:,2)-imag(S(pv))];
+            f       =   [f;imag(S(sb))-Qlimsb(1);Qlimsb(2)-imag(S(sb))];
+            f       =   [f;Pmax-real(S(sb))];
         end
     end
 
+    %   Constraints on Voltages in Quadratic Form   %
+    function [Qseq,Qsiq]=MakeQs
+        Qs      =   GetQuads(@func,nn);
+        Qseq    =   Qs(:,:,1:length(pv));
+        Qsiq    =   Qs(:,:,(length(pv)+1):end);
+    end
+
+    %   Function to test correctness of Jacobian   %
     function [f,grad]=fres(V)
-        V(2*n-1:end)=exp(V(2*n-1:end));
-        F=funf(V);
-        Jac=Mats(:,:,1)+sum(bsxfun(@times,Mats(:,:,2:end),permute(V,[3,2,1])),3);
-        f=norm(F-1)^2;
-        grad=2*Jac'*(F-1);
+        F       =   funf(V);
+        Jac     =   Mats(:,:,1)...
+                    +sum(bsxfun(@times,Mats(:,:,2:end),...
+                            permute(V,[3,2,1])),3);
+        f       =   sum(F);
+        grad    =   sum(Jac,1)';
     end
 
+    %   Function to test correctness of Quadratic Form Constraints   %
     function chk=TestQs(V)
-        Ft=zeros(nn,1);
-        for kk=1:nn
-            Ft(kk)=[1;V]'*Qss(:,:,kk)*[1;V];
+        Ft      =   func(zeros(nn,1));
+        Qss     =   cat(3,Qse,Qsi);
+        for kk=1:length(Ft)
+            Ft(kk)  =   [1;V]'*Qss(:,:,kk)*[1;V];
         end
-        chk=norm(Ft-funf(V));
+        chk     =   norm(Ft-func(V));
     end
-fun=@funf;
 ff=@fres;
-TestQ=@TestQs;
+TQs=@TestQs;
 end
