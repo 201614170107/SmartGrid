@@ -14,8 +14,8 @@ Vnom    =   mpc.bus(sb,8);Vnom=Vnom(:);
 nbr     =   size(mpc.branch,1);
 
 Y       =   makeYbus(mpc);
-%Yd      =   1./sqrt(abs(diag(Y)));
-%Y       =   diag(Yd)*Y*diag(Yd);
+%Yd      =   exp(1i*(-pi/2+.01))./diag(Y);
+%Y       =   diag(Yd)*Y;
 Mv      =   cell(npq,1);
 Mbr     =   cell(nbr,1);
 for ii  =   1:npq
@@ -24,8 +24,9 @@ for ii  =   1:npq
 end
 
 for ii  =   1:nbr
-    [Ms,Mc,inds]=   Matij(mpc.branch(ii,1),mpc.branch(ii,2));    
-    Mbr{ii}  =   {Ms,Mc,inds};
+    ij          =   [mpc.branch(ii,1),mpc.branch(ii,2)];
+    [Ms,Mc,inds]=   Matij(ij(1),ij(2));    
+    Mbr{ii}  =   {Ms,Mc,inds,ij};
 end
 
 
@@ -49,33 +50,20 @@ nn      =   npq+n-1;
         f   =   [real(S(nsb));imag(S(pq))];
     end
 
-    function S=Sij(x,i,j)
-        V   =   formV(x);
-        S   =   V(i).*conj(Y(sub2ind(size(Y),i,j)).*V(j));
-    end
-
-    function f=pftwo(x)
-        V   =   formV(x);
-        S   =   V;
-        for it=1:length(V)
-            js          =   find(Y(it,:));
-            js(js==it)  =   [];
-            S(it)       =   sum(Sij(x,it(ones(length(js))),js));
-        end
-        f   =   [real(S(nsb));imag(S(pq))];
-    end
-
+   
     function [Ms,Mc,inds]=Matij(i,j)
-        G   =   real(Y(i,j));
-        B   =   imag(Y(i,j));
-        Ms  =   [-G,G,B,B;...
-                 -G,G,-B,-B;...
-                 B,-B,G,G;...
-                 B,-B,-G,-G];
-        Mc  =   [B,-B,G,G;...
-                 -B,B,G,G;...
-                 G,-G,-B,-B;...
-                 -G,G,-B,-B]; 
+        Gi  =   real(Y(i,j));
+        Bi  =   imag(Y(i,j));
+        Gj  =   real(Y(j,i));
+        Bj  =   imag(Y(j,i));
+        Ms  =   [-Gi,Gi,Bi,Bi;...
+                 -Gj,Gj,-Bj,-Bj;...
+                 Bi,-Bi,Gi,Gi;...
+                 Bj,-Bj,-Gj,-Gj];
+        Mc  =   [Bi,-Bi,Gi,Gi;...
+                 -Bj,Bj,Gj,Gj;...
+                 Gi,-Gi,-Bi,-Bi;...
+                 -Gj,Gj,-Bj,-Bj]; 
         [Ms,~]      =   shrinkM(Ms,[i;j;n+i;n+j]);     
         [Mc,inds]   =   shrinkM(Mc,[i;j;n+i;n+j]);    
     end
@@ -120,7 +108,7 @@ nn      =   npq+n-1;
         for it=1:nbr
             Msi =   Mbr{it}{1};
             Mci =   Mbr{it}{2};
-            ind =   Mbr{it}{3};
+            ind =   Mbr{it}{3};            
             W(ind,ind)  =   W(ind,ind)+Msi*s(it)+Mci*c(it);
         end
     end

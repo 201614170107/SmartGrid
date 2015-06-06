@@ -1,8 +1,9 @@
-function sol=SolvePolarSOS(Mv,Mbr,mpc,del,vscl,vr)
+function sol=SolvePolarSOS(Mv,Mbr,mpc,vscl,gam)
 define_constants;
 pq      =   mpc.bus(:,BUS_TYPE)==1;
 pv      =   mpc.bus(:,BUS_TYPE)==2;
 sb      =   mpc.bus(:,BUS_TYPE)==3;
+nsb     =   ~sb;
 Vmin    =   mpc.bus(:,13);
 Vmax    =   mpc.bus(:,12);
 Vmean   =   (Vmin+Vmax)/2;
@@ -16,35 +17,31 @@ prog    =   spotsosprog;
 nbus    =   size(mpc.bus,1);
 n       =   nbus+npq-1;
 z       =   msspoly('z',n);
-v       =   msspoly('v',length(Mv));
-s       =   msspoly('s',1);
-c       =   msspoly('c',1);
+vxv     =   msspoly('vx',(nbus-1));
+vyv     =   msspoly('vy',(nbus-1));
 
-
-
-prog    =   prog.withIndeterminate([z;v;s;c]);
-V       =   zeros(nbus,1)*v(1);
-V(sb)   =   mpc.bus(sb,VM);
-V(pv)   =   mpc.bus(pv,VM);
-V(pq)   =   v;
-[prog,W]=   prog.newFree(n);
+prog    =   prog.withIndeterminate([z;vxv;vyv]);
+V       =   zeros(nbus,2)*vxv(1);
+V(find(sb),1) =   mpc.bus(sb,VM);
+V(find(sb),2) =   0;
+V(find(nsb),1)=   vxv;
+V(find(nsb),2)=   vyv;
+%[prog,W]=   prog.newFree(1);
 pol     =   [];
-Sym     =   @(anyx,indx) (diag(W(indx))*anyx)+...
-    (diag(W(indx))*anyx)';
-Xs      =   cell(nbus,1);
-for it=1:nbus
-    Xs{it}  =   zeros(n)*W(1);
-end
+Sym     =   @(anyx,indx) (anyx+anyx');
 
 for it=1:length(Mbr)
     Ms          =   Mbr{it}{1};
     Mc          =   Mbr{it}{2};
     ind         =   Mbr{it}{3};
-    [prog,X]    =   ApplyRelax(prog,Sym(Ms,ind),Sym(Mc,ind),[z(ind);s;c],del);
+    ic          =   bi(it);
+    jc          =   bj(it);
+    pols        =   z(ind)'*(Sym(Ms,ind)*(V(jc,1)*V(ic,2)-V(ic,1)*V(jc,2)))*z(ind);
+    polc        =   z(ind)'*(Sym(Mc,ind)*(V(ic,1)*V(jc,1)+V(ic,2)*V(jc,2)))*z(ind);
     if(isempty(pol))
-        pol     =   z(ind)'*(X*V(bi(it))*V(bj(it)))*z(ind);
+        pol     =   pols+polc;
     else
-        pol     =   pol+z(ind)'*(X*V(bi(it))*V(bj(it)))*z(ind);
+        pol     =   pol+pols+polc;
     end
 end
 
@@ -52,31 +49,36 @@ for it=1:length(Mv)
     Mx  =   Mv{it}{1};
     ind =   Mv{it}{2};
     ii  =   Mv{it}{3};
-    pol =   pol+V(ii)^2*z(ind)'*Sym(Mx,ind)*z(ind);
+    pol =   pol+(V(ii,1).^2+V(ii,2).^2)*z(ind)'*Sym(Mx,ind)*z(ind);
 end
 
-mbr                 =   pq(bi)|pq(bj);
-Qsi                 =   MakeQuad([v-Vmin(pq);Vmax(pq)-v]);
-%Qsi                 =   [Qsi;(V(bi(mbr))-vr*V(bj(mbr)));...
- %                           (V(bj(mbr))-vr*V(bi(mbr)));...
-  %                          (V(bi(mbr))-vr*V(bj(mbr))).*(V(bj(mbr))-vr*V(bi(mbr)));...
-  %                          (V(bi(mbr))-vr*V(bj(mbr))).^2;...
-   %                         (V(bj(mbr))-vr*V(bi(mbr))).^2];
-   %...
-                   %         V(bi(mbr))-vr*V(bj(mbr));...
-                    %        V(bj(mbr))-vr*V(bi(mbr));
-Msi                 =   Qsi;
-for it=1:length(Qsi)
-[prog,tmp]      =   prog.newPSD(1+length([z]));
-Msi(it)         =   [1;z]'*tmp*[1;z];      
-end
-[prog,Mse]          =   prog.newFreePoly(monomials([z;v],0:2),1);
-prog                =   prog.withSOS(pol-Msi'*Qsi-Mse*(z'*z-1)-1);
+Qse     =   [V(pv,1).^2+V(pv,2).^2-mpc.bus(pv,VM).^2;z'*z-1];
+
+Qsi     =   V(bi,1).*V(bj,1)+V(bi,2).*V(bj,2)-gam*(V(bi,1).^2+V(bi,2).^2);
+Qsi     =   [Qsi;V(bi,1).*V(bj,1)+V(bi,2).*V(bj,2)-gam*(V(bj,1).^2+V(bj,2).^2)];
+
+[prog,Msi]     =   MakeMult(prog,length(Qsi),[z;vxv;vyv],1);
+[prog,Mse]     =   MakeMult(prog,length(Qse),[z;vxv;vyv],0);
+prog    =   prog.withSOS(pol-Msi'*Qsi-Mse'*Qse);
 
 options             =   spot_sdp_default_options();
 options.verbose     =   1;
 sol                 =   prog.minimize(0,@spot_frlib,options);
 end
+
+function [prog,Mult]=MakeMult(prog,li,var,pos)
+    Mult    =   [];
+    for i=1:li
+        if(pos)
+            [prog,tmp]  =   prog.newPSD(length(var)+1);
+            Mult        =   [Mult;[1;var]'*tmp*[1;var]];
+        else
+           [prog,tmp]   =   prog.newSym(length(var)+1);
+            Mult        =   [Mult;[1;var]'*tmp*[1;var]];
+        end        
+    end       
+end
+
 function [prog,X]=ApplyRelax(prog,Ms,Mc,vars,del)
 n           =   size(Ms,1);
 z           =   vars(1:n);
