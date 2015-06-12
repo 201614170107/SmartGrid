@@ -1,7 +1,8 @@
 clc;
 clearvars;
 addpath('../QuadRelaxation/');
-mpc     =   loadcase('case9.m');
+name    =   'case9';
+mpc     =   loadcase(sprintf('%s.m',name));
 define_constants;
 nbus    =   size(mpc.bus,1);
 [P,Q]   =   GetPQ(mpc);
@@ -16,6 +17,7 @@ opts    =   CheckMoment(mpc,plims,qlims);
 if(all(opts>0))
     amax    =   mean(alphs);
     alphs   =   [mean(alphs),max(alphs)];
+    save(sprintf('%sres.mat',name),'alphs');
 else
     alphs   =   [min(alphs),mean(alphs)];
 end

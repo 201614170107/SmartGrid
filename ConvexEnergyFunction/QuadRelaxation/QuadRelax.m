@@ -38,6 +38,14 @@ classdef QuadRelax
             end
         end
         
+        function Ms=transformQuadMats(obj,Mats)
+            GY  =   @(anyinds) obj.GetYkf(anyinds);
+            Ms  =   cell(length(Mats),1);
+            for it=1:length(Ms)
+                Ms{it}  =   Mats{it}.FormPol(GY);
+            end
+        end
+        
         function [is,js]=FormPairs(~,ii)
             ii  =   [0;ii];
             n   =   length(ii);

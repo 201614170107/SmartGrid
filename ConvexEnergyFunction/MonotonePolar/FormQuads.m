@@ -14,7 +14,7 @@ Qse =   cell(npv,1);
 Qbr =   cell(m-npv,1);
 
 v   =   (1:2*(nbus-1))'+(nbus-1+length(pq));
-v   =   arrayfun(@(anyx) {num2str(anyx)},v);
+v   =   arrayfun(@(anyx) {{anyx}},v);
 v   =   [1;v];
 
 n   =   3*(nbus-1)+length(pq);

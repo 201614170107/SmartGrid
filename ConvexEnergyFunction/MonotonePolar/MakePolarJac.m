@@ -16,7 +16,7 @@ bi      =   mpc.branch(:,1);
 bj      =   mpc.branch(:,2);
 
 Y       =   makeYbus(mpc);
-vv      =   [1;arrayfun(@(anyx) {num2str(anyx)},(n-1+npq)+(1:2*(n-1))')];
+vv      =   [1;arrayfun(@(anyx) {{anyx}},(n-1+npq)+(1:2*(n-1))')];
 zz      =   (1:(n-1+npq))';
 Mats    =   cell(npq+2*nbr,1);
 for ii  =   1:npq

@@ -24,7 +24,7 @@ Gn   =   ComputeDecomposition(spones(G));
 end
 function res=toind(i)
 res =   0;
-if(ischar(i))
-    res =   str2double(i);
+if(iscell(i))
+    res =   i{1};
 end
 end

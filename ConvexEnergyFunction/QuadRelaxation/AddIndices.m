@@ -12,8 +12,9 @@ for it=1:m
     end
 end
 function key=vecNum(ks)
+ks(ks==0)   =   [];
 ks      =   sort(ks(:));
-key     =   vc*ks+1;
+key     =   vc(end-length(ks)+1:end)*ks+1;
 end
 
 
