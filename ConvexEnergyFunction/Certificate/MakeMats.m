@@ -69,15 +69,15 @@ Qsi         =   ConvertQuads(Qsi);
         f       =   abs(Vc(pv)).^2-Vpv.^2;
         
             %   Reactive power limits                %
-        f       =   [f;imag(S(pv))-Qlims(:,1);Qlims(:,2)-imag(S(pv))];
-        f       =   [f;imag(S(sb))-Qlimsb(1);Qlimsb(2)-imag(S(sb))];
+       % f       =   [f;Qlims(:,2)-imag(S(pv));imag(S(pv))-Qlims(:,1)];
+        f       =   [f;Qlimsb(2)-imag(S(sb))];
         
             %   Real power limits                %
         f       =   [f;Pmax-real(S(sb))];       
         
             %   Voltage magnitude bounds at PQ buses   %
-      %  f       =   [f;abs(Vc(pq)).^2-Vmin(pq).^2];
-      %  f       =   [f;Vmax(pq).^2-abs(Vc(pq)).^2];
+     %   f       =   [f;abs(Vc(pq)).^2-Vmin(pq).^2];
+     %   f       =   [f;Vmax(pq).^2-abs(Vc(pq)).^2];
         
             %   Line flow constraints   %
         f       =   [f;real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bi)).^2;...

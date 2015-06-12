@@ -1,5 +1,5 @@
-function opts=CheckMoment(mpc,plims,qlims)
-[Qse,Qsi,Qss,n]     =   MakeMats(mpc,.6,plims,qlims);
+function opts=CheckMoment(mpc,plims,qlims,gam)
+[Qse,Qsi,Qss,n]     =   MakeMats(mpc,gam,plims,qlims);
 clqs                =   ComputeGraph([],[Qse;Qsi;Qss]);
 [~,kf,ny]           =   FindMap(clqs,n);
 QR                  =   QuadRelax(kf);
