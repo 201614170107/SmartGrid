@@ -1,74 +1,41 @@
-function [Qse,Qbr,V]=FormQuads(mpc,gam,del)
-define_constants;
-pv  =   find(mpc.bus(:,BUS_TYPE)==2);
-pq  =   find(mpc.bus(:,BUS_TYPE)==1);
-nsb =   (~(mpc.bus(:,BUS_TYPE)==3));
-sb  =   find(~nsb);
-npv =   length(pv);
-npq =   length(pq);
-nbr =   size(mpc.branch,1);
+function [Qse,Qbr]=FormQuads(mpc,gam)
+pv  =   find(mpc.bus(:,2)==2);
+pq  =   find(mpc.bus(:,2)==1);
+sb  =   find(mpc.bus(:,2)==3);
+nsb =   find(~(mpc.bus(:,2)==3));
 nbus=   size(mpc.bus,1);
 bi  =   mpc.branch(:,1);
 bj  =   mpc.branch(:,2);
+Vpv =   mpc.bus(pv,8);
+npv =   length(pv);
+Qs  =   GetQuads(@QuadFuns,2*(nbus-1));
+m   =   size(Qs,3);
 Qse =   cell(npv,1);
-Qbr =   cell(6*nbr+2*npq,1);
-Vmin=   mpc.bus(:,13);
-Vmax=   mpc.bus(:,12);
-v   =   (nbus-1+npq)+reshape(1:(2*(nbus-1)),[nbus-1,2]);
-V   =   cell(nbus,2);
-V(nsb,:)    =   arrayfun(@(anyx) {num2str(anyx)},v);
-V{sb,1}     =   mpc.bus(sb,VM)*1;
-V{sb,2}     =   mpc.bus(sb,VM)*0;
-for it=1:npv
-    Qse{it}  =   {V(pv(it),1),V(pv(it),1),1;...
-        V(pv(it),2),V(pv(it),2),1;...
-        {num2str(0)},{num2str(0)},-mpc.bus(pv(it),VM).^2};
+Qbr =   cell(m-npv,1);
+
+v   =   (1:2*(nbus-1))'+(nbus-1+length(pq));
+v   =   arrayfun(@(anyx) {num2str(anyx)},v);
+v   =   [1;v];
+
+n   =   3*(nbus-1)+length(pq);
+for it=1:(m-npv)
+    Qbr{it}         =   QuadPoly(Qs(:,:,it),v,n);
 end
-for it=1:nbr
-    i   =   bi(it);
-    j   =   bj(it);
-    Qbr{6*(it-1)+1} =   {V(i,1),V(j,1),1;...
-                 V(i,2),V(j,2),1;...
-                 V(i,1),V(i,1),-gam*cos(del);...
-                 V(i,2),V(i,2),-gam*cos(del);};
-    Qbr{6*(it-1)+2} =   {V(i,1),V(j,1),1;...
-                 V(i,2),V(j,2),1;...
-                 V(j,1),V(j,1),-gam*cos(del);...
-                 V(j,2),V(j,2),-gam*cos(del);};
-    Qbr{6*(it-1)+3} =   {V(i,1),V(j,2),1;...
-                 V(i,2),V(j,1),-1;...
-                 V(j,1),V(j,1),sin(del)/gam;...
-                 V(j,2),V(j,2),sin(del)/gam;};
-    Qbr{6*(it-1)+4} =    {V(i,1),V(j,2),1;...
-                 V(i,2),V(j,1),-1;...
-                 V(i,1),V(i,1),sin(del)/gam;...
-                 V(i,2),V(i,2),sin(del)/gam;};
-    Qbr{6*(it-1)+5} =   {V(i,1),V(j,2),-1;...
-                 V(i,2),V(j,1),1;...
-                 V(i,1),V(i,1),sin(del)/gam;...
-                 V(i,2),V(i,2),sin(del)/gam;};
-    Qbr{6*(it-1)+6} =   {V(i,1),V(j,2),-1;...
-                 V(i,2),V(j,1),1;...
-                 V(j,1),V(j,1),sin(del)/gam;...
-                 V(j,2),V(j,2),sin(del)/gam;};
+for it=(m-npv+1):m
+    Qse{it-(m-npv)} =   QuadPoly(Qs(:,:,it),v,n);
 end
-%{
-for it=1:nbr
-    i   =   bi(it);
-    j   =   bj(it);
-     Qbr{nbr+it} =   {V(i,1),V(j,1),1;...
-                 V(i,2),V(j,2),1;...
-                 V(j,1),V(j,1),-gam;...
-                 V(j,2),V(j,2),-gam};
+
+    function V=formV(v)
+        V           =   zeros(nbus,1);
+        V(nsb)      =   v(1:(nbus-1))+1i*v(nbus:end);
+        V(sb)       =   mpc.bus(sb,8);       
+    end
+    function f=QuadFuns(v)
+        Vc   =  formV(v);
+        f    =  [real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bi)).^2;...
+                 real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bj)).^2;...
+                 abs(Vc(pq)).^2-.6.^2;...
+                 abs(Vc(pv)).^2-Vpv.^2];
+    end
 end
-%}
-for it=6*nbr+(1:npq)
-    i   =   pq(it-6*nbr);
-    Qbr{it} =   {V(i,1),V(i,1),1;...
-                 V(i,2),V(i,2),1;...
-                 {num2str(0)},{num2str(0)},-Vmin(i).^2;};
-    Qbr{npq+it} =   {V(i,1),V(i,1),-1;...
-                 V(i,2),V(i,2),-1;...
-                 {num2str(0)},{num2str(0)},Vmax(i).^2;};
-end
-end
+

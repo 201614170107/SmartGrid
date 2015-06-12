@@ -1,34 +1,38 @@
-function opt=SolveMoment(Mv,Mbr,mpc,gam,del)
+function opt=SolveMoment(Mats,mpc,gam)
 nbus            =   size(mpc.bus,1);
-pq              =   find(mpc.bus(:,2)==1);
-pq              =   pq(:);
-npq             =   length(pq);
-[Qse,Qsi,V]     =   FormQuads(mpc,gam,del);
-z               =   arrayfun(@(anyx) {num2str(anyx)},(1:(nbus-1+npq))');
+npq             =   sum(mpc.bus(:,2)==1);
 n               =   3*(nbus-1)+npq;
-clqs            =   ComputeGraph(mpc,Mv,Mbr,Qse,Qsi);
-[~,kf,cou]      =   FindMap(clqs,n);
-Mats            =   ConvertMats(Mv,Mbr,V,z);
-
+nz              =   (nbus-1)+npq;
+[Qse,Qsi]       =   FormQuads(mpc,gam);
+clqs            =   ComputeGraph(mpc,Mats,Qse,Qsi);
+[~,kf,ny]       =   FindMap(clqs,n);
+QR              =   QuadRelax(kf);
+Mse             =   QR.transformQuads(Qse);
+Msi             =   QR.transformQuads(Qsi);
+z               =   (1:nz)';
 cvx_begin
-variable y(cou,1);
+variable y(ny,1);
 GetY        =   @(anyind) GetYkf(anyind,y,kf);
-pol         =   FormPoly(Mats,length(z),GetY);
-minimize(lambda_max(pol+pol'))
+pol         =   zeros(nz)*y(1);
+for it=1:length(Mats)
+    pol         =   Mats{it}.UpdatePol(pol,GetY);
+end
+minimize(0)
 subject to
-y(kf([0,0,0,0]))==1;
+-(pol+pol')         ==  semidefinite(size(pol,1));
+y(kf([0,0,0,0]))    ==  1;
 normz=0;
-for it=1:length(z)
-    ii=str2double(z{it});
-    normz=normz+y(kf([ii,ii,0,0]));
+for it=1:nz
+    ii      =   z(it);
+    normz   =   normz+y(kf([ii,ii,0,0]));
 end
 normz   ==  1;
 y(FormMkf(n,kf))==semidefinite(n+1);
 for it=1:length(Qse)
-    SecondOrderQuad(Qse{it},clqs,GetY,n)==0;
+    Qse{it}.FormMat(clqs,GetY)==0;
 end
 for it=1:length(Qsi)
-    Yc  =   SecondOrderQuad(Qsi{it},clqs,GetY,n);
+    Yc  =   Qsi{it}.FormMat(clqs,GetY);
     Yc  ==  semidefinite(size(Yc,1));
 end
 for it=1:length(clqs)
@@ -36,7 +40,6 @@ for it=1:length(clqs)
     Yc  =   y(FormMatkf(is,js,kf));
     Yc  ==  semidefinite(size(Yc,1));
 end
-
 cvx_end
 opt=cvx_optval;
 
@@ -97,28 +100,3 @@ for it=1:(n+1)
     end
 end
 end
-
-function Mats=ConvertMats(Mv,Mbr,V,z)
-    Mats    =   cell(2*length(Mv)+4*length(Mbr),1);
-    cou     =   0;
-    for it=1:length(Mv)
-        M           =   Mv{it}{1};
-        ind         =   Mv{it}{2};
-        ii          =   Mv{it}{3};
-        Mats{cou+1} =   {M,z(ind),V(ii,1),V(ii,1)};
-        Mats{cou+2} =   {M,z(ind),V(ii,2),V(ii,2)};
-        cou         =   cou+2;
-    end
-    for it=1:length(Mbr)
-        Ms          =   Mbr{it}{1};
-        Mc          =   Mbr{it}{2};
-        ind         =   Mbr{it}{3};
-        ij          =   Mbr{it}{4};
-        Mats{cou+1} =   {Mc,z(ind),V(ij(1),1),V(ij(2),1)};
-        Mats{cou+2} =   {Mc,z(ind),V(ij(1),2),V(ij(2),2)};
-        Mats{cou+3} =   {Ms,z(ind),V(ij(1),2),V(ij(2),1)};
-        Mats{cou+4} =   {-Ms,z(ind),V(ij(1),1),V(ij(2),2)};
-        cou         =   cou+4;
-    end
-end
-

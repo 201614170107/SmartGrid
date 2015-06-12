@@ -1,5 +1,5 @@
 function [map,kf,cou]=FindMap(clqs,n)
-map     =   java.util.HashMap;
+map     =   sparse([],[],[],(n+1)^4,1);
 cou     =   0;
 for it=1:length(clqs)
     [is,js]         =   FormPairs(clqs{it});
@@ -8,7 +8,9 @@ end
 is=(0:n)';
 js=zeros(n+1,1);
 [map,kf,cou]    =   AddIndices(map,is,js,n,cou);
+%M               =   FormTable(kf,n);
 end
+
 
 function [is,js]=FormPairs(ii)
     ii  =   [0;ii];
