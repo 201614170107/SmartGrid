@@ -7,15 +7,15 @@ QR                  =   QuadRelax(kf);
 Mse                 =   QR.transformQuads(Qse,clqs);
 Mss                 =   QR.transformQuads(Qss,clqs);
 Msi                 =   QR.transformQuads(Qsi,clqs);
-opts                =   zeros(length(Qsi),1);
+opts                =   ones(length(Qsi),1);
 [Yo,YI,Yclqs]       =   QR.GetYs(clqs,n);
 
 for iter=1:length(Qsi)
 cvx_begin
 variable y(ny,1);
-
-minimize(trace(Qsi{iter}.GetQ()'*y(YI)))
+minimize(0)
 subject to
+trace(Qsi{iter}.GetQ()'*y(YI))==0;
 y(Yo)    ==  1;
 y(YI)    ==  semidefinite(size(YI,1));
 for it=1:length(Qse)
@@ -33,8 +33,8 @@ for it=1:length(clqs)
     y(Yclqs{it})    ==  semidefinite(size(Yclqs{it},1));
 end
 cvx_end
-opts(iter)  =   cvx_optval;
-if(opts(iter)<1e-5)
+if(~strcmp(cvx_status,'Infeasible'))
+    opts(:) =   0;
     Qsi=[];
     break;
 end

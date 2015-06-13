@@ -45,6 +45,7 @@ Qsi         =   ConvertQuads(Qsi);
         S       =   Vc.*conj(Y*Vc);
         f       =   [real(S(nsb))-plims(nsb,1);plims(nsb,2)-real(S(nsb));...
                         imag(S(pq))-qlims(pq,1);qlims(pq,2)-imag(S(pq))];
+      %  f       =   [real(S(nsb));imag(S(pq))];
     end
 
     %   Helper Function - Add Slack Bus Voltage Reference %
@@ -76,8 +77,8 @@ Qsi         =   ConvertQuads(Qsi);
         f       =   [f;Pmax-real(S(sb))];       
         
             %   Voltage magnitude bounds at PQ buses   %
-     %   f       =   [f;abs(Vc(pq)).^2-Vmin(pq).^2];
-     %   f       =   [f;Vmax(pq).^2-abs(Vc(pq)).^2];
+        f       =   [f;abs(Vc(pq)).^2-Vmin(pq).^2];
+        f       =   [f;Vmax(pq).^2-abs(Vc(pq)).^2];
         
             %   Line flow constraints   %
         f       =   [f;real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bi)).^2;...
