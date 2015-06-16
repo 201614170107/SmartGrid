@@ -1,9 +1,9 @@
-function opt=SolveMoment(Mats,mpc,gam)
+function opt=SolveMoment(Mats,mpc,gam,opt)
 nbus            =   size(mpc.bus,1);
 npq             =   sum(mpc.bus(:,2)==1);
 n               =   3*(nbus-1)+npq;
 nz              =   (nbus-1)+npq;
-[Qse,Qsi]       =   FormQuads(mpc,gam);
+[Qse,Qsi]       =   FormQuads(mpc,gam,opt);
 clqs            =   ComputeGraph(Mats,[Qse;Qsi]);
 [~,kf,ny]       =   FindMap(clqs,n);
 QR              =   QuadRelax(kf);

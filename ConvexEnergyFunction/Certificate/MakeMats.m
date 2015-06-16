@@ -70,7 +70,7 @@ Qsi         =   ConvertQuads(Qsi);
         f       =   abs(Vc(pv)).^2-Vpv.^2;
         
             %   Reactive power limits                %
-       % f       =   [f;Qlims(:,2)-imag(S(pv));imag(S(pv))-Qlims(:,1)];
+        f       =   [f;Qlims(:,2)-imag(S(pv));imag(S(pv))-Qlims(:,1)];
         f       =   [f;Qlimsb(2)-imag(S(sb))];
         
             %   Real power limits                %
@@ -81,8 +81,7 @@ Qsi         =   ConvertQuads(Qsi);
         f       =   [f;Vmax(pq).^2-abs(Vc(pq)).^2];
         
             %   Line flow constraints   %
-        f       =   [f;real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bi)).^2;...
-                     real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bj)).^2];
+        f       =   [f;gam.^2-abs(Vc(bi)-Vc(bj)).^2];
        
     end
 

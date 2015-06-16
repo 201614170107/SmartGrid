@@ -1,4 +1,4 @@
-function [Qse,Qbr]=FormQuads(mpc,gam)
+function [Qse,Qbr]=FormQuads(mpc,gam,opt)
 pv  =   find(mpc.bus(:,2)==2);
 pq  =   find(mpc.bus(:,2)==1);
 sb  =   find(mpc.bus(:,2)==3);
@@ -32,8 +32,13 @@ end
     end
     function f=QuadFuns(v)
         Vc   =  formV(v);
-        f    =  [real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bi)).^2;...
-                 real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bj)).^2;...
+        if(opt)
+            f    =  [real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bi)).^2;...
+                 real(Vc(bi).*conj(Vc(bj)))-gam*abs(Vc(bj)).^2];
+        else
+            f    =  gam.^2-abs(Vc(bi)-Vc(bj)).^2;
+        end
+        f    =  [f;...
                  abs(Vc(pq)).^2-.6.^2;...
                  abs(Vc(pv)).^2-Vpv.^2];
     end
