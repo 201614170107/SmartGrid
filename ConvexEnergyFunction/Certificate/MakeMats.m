@@ -9,8 +9,9 @@ nn      =   2*(n-1);
 if(Scal.norm==1)
     nn  =   nn+length(nsb)+length(pq);
 end
-Vnom    =   exp(0*1i)*mpc.bus(sb,8);
-Vpv     =   mpc.bus(pv,8);
+mpcres  =   runpf(mpc);
+Vnom    =   exp(0*1i)*mpcres.bus(sb,8);
+Vpv     =   mpcres.bus(pv,8);
 Vmax    =   mpc.bus(:,12);
 Vmin    =   mpc.bus(:,13);
 Y       =   makeYbus(mpc);
