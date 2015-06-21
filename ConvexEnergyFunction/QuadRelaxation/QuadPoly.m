@@ -74,6 +74,10 @@ classdef QuadPoly
             ind     =   unique([i;j]);
             ind(ind==0) =   [];
         end
+        
+        function res=Eval(obj,y)
+            res=[1;y]'*(obj.Q)*[1;y];
+        end
     end
     methods(Static)
         function Ym=EvalY(Ms,y)
