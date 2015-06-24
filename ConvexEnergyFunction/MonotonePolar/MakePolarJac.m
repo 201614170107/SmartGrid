@@ -41,7 +41,7 @@ Vx    =   formVc(x);
 
 cc      =   randn(npq+n-1,1);
 f       =   @(anyx) fg(anyx,cc);
-xmin    =   minFunc(f,randn(npq+n-1,1),struct('derivativeCheck','on'));
+xmin    =   minFunc(f,randn(npq+n-1,1),struct('derivativeCheck','on','MaxFunEvals',50,'MaxIter',1));
 JF      =   @(anyx)MakeJac(formV(anyx));
 nn      =   npq+n-1;
 
