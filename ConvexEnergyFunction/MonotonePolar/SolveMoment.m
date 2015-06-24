@@ -1,4 +1,4 @@
-function opt=SolveMoment(Mats,mpc,gam,opt)
+function [opt,Yres]=SolveMoment(Mats,mpc,gam,opt)
 nbus            =   size(mpc.bus,1);
 npq             =   sum(mpc.bus(:,2)==1);
 n               =   3*(nbus-1)+npq;
@@ -39,5 +39,6 @@ for it=1:length(clqs)
 end
 cvx_end
 opt=cvx_optval;
-
+Yres=y(YI);
+Yres=Yres(2:end,1);
 end
